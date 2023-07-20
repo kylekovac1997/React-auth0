@@ -16,6 +16,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       clientId={clientId}
       authorizationParams={{
         redirect_uri: window.location.origin,
+        audience: "this is a unique identifier",
+        scope: "openid profile email",
       }}
     >
       <App />
