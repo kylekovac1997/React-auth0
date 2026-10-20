@@ -1,6 +1,6 @@
 # Gym App: Build Plan
 
-Status: draft for Kyle's review · 2026-10-20
+Status: Phase 0 in review ([PR #1](https://github.com/kylekovac1997/React-auth0/pull/1)) · updated 2026-10-20 with the extra features in 4.10
 
 ## 1. What we're building
 
@@ -100,12 +100,22 @@ Same data underneath, different presentation. A `useMode()` hook picks the compo
 Scan → look up (local cache first, then Open Food Facts) → product card with an animated macro breakdown → pick serving size or grams → add to Breakfast/Lunch/Dinner/Snacks.
 Also: manual entry, recent and favourite foods, quick-add calories, and copy yesterday's meals.
 
+- **Search by name**: text search through Open Food Facts (debounced and cached, because search has tighter rate limits than barcode lookups), with the user's own recent and custom foods shown first.
+- **Custom foods, saved meals and recipes**: build a recipe from ingredients, set the number of servings, and log one serving in a tap.
+- **Water tracking**: tap to add a glass or bottle against a daily target (default from body weight), with an animated fill and an optional reminder. Synced to Health where supported.
+
 ### 4.5 Workout tracker
 1. **Start Workout** (from today's plan or empty) starts the session timer.
 2. Tap an exercise to see its image and instructions, then log sets (weight × reps, with the previous session's numbers pre-filled).
 3. **Complete set** auto-starts the **rest countdown** (default chosen by goal: 60 to 90 s for hypertrophy, 2 to 3 min for strength, editable with ±15 s buttons).
 4. When the countdown ends, the **phone vibrates** with a haptic pattern and a sound. If the app is in the background, a **scheduled local notification** fires at the exact end time. This is needed because JS timers pause in the background, so the countdown is calculated from a stored end timestamp, not a ticking counter.
 5. Finish the workout to see a summary (duration, volume, PRs) with a celebration animation. Calories burned and the workout are written back to Health.
+
+Also in the tracker:
+- **Lock-screen rest timer**: an iPhone Live Activity (lock screen and Dynamic Island) and an ongoing Android notification that shows the countdown, so the app doesn't need to stay open.
+- **Exercise history and PRs**: every past set for an exercise, best weight, best reps and estimated 1RM, with a PR badge when one is beaten.
+- **Warm-up sets** (generated from the working weight and not counted in volume), **supersets and circuits** (grouped exercises that share one rest timer), and a **plate calculator** that shows which plates to load for a target weight and bar.
+- **Custom exercises** (name, muscles, equipment, optional photo) and a **plan editor** to copy a built-in plan and change its days, exercises, sets, reps and rest.
 
 ### 4.6 Health sync and step automation
 - Read: steps, active energy, weight, heart rate, sleep (optional). Write: workouts, weight, nutrition (where allowed).
@@ -140,22 +150,33 @@ Advice shows as cards on Home and as an optional weekly summary notification. Si
 - Lottie confetti for PRs and goals hit.
 - Respect the system "Reduce Motion" setting.
 
+### 4.10 Extra features
+- **Body measurements and progress photos**: waist, chest, arms, thighs, hips and neck on the weigh-in schedule. Photos stay on the device by default, with a side-by-side or slider before-and-after view.
+- **Units and appearance**: kg/lb, cm/in and kcal/kJ chosen at onboarding and changeable later, with light, dark or system theme.
+- **Data export and backup**: export everything to CSV/JSON, and back up and restore through iCloud Drive or Google Drive. This later moves to account sync.
+- **Streaks and achievements**: workout and logging streaks (with a rest-day allowance so a planned day off doesn't break them), plus badges for milestones like a first PR, 10 workouts or 30 days logged.
+- **Home screen widgets**: calories left and today's workout. iOS widgets are built with WidgetKit through a config plugin, and Android widgets use react-native-android-widget.
+- **Watch apps**: an Apple Watch app (SwiftUI) and a Wear OS app to log sets and run the rest timer from the wrist, syncing with the phone. This is native code outside React Native, so it comes last.
+- **Social sharing**: share a workout summary or PR as an image card. Friends and feeds come later with accounts.
+
 ## 5. Data model (local SQLite)
-`user_profile`, `goals`, `body_metrics` (weight, body fat, measurements, date), `foods` (cache from OFF + custom), `food_logs`, `exercises` (seeded from free-exercise-db), `plan_templates`, `user_plans`, `workout_sessions`, `workout_sets`, `reminders`, `advice_log`.
+`user_profile` (including units and theme), `goals`, `body_metrics` (weight, body fat, measurements, date), `progress_photos`, `foods` (cache from OFF + custom), `recipes`, `recipe_items`, `food_logs`, `water_logs`, `exercises` (seeded from free-exercise-db + custom), `plan_templates`, `user_plans` (editable copies), `workout_sessions`, `workout_sets` (with warm-up flag and superset group), `personal_records`, `reminders`, `advice_log`, `achievements`.
 
 ## 6. Phases
 
 | Phase | Scope | Done when |
 |---|---|---|
 | **0. Setup** | Expo + TypeScript repo, Expo Router, ESLint/Prettier, EAS dev builds for iOS and Android, CI (typecheck, lint, tests), design tokens, mode context | App runs on both platforms from a dev build |
-| **1. Onboarding and profile** | Onboarding flow, BMR/TDEE/macro maths with unit tests, SQLite schema, Simple/Advanced toggle | A new user gets calorie and macro targets |
-| **2. Workout tracker** | Bundle the exercise DB, exercise browser with search and filters, plan templates, Start Workout, set logging, rest countdown + haptics + background notification, session summary | A full workout can be logged and the rest timer vibrates even when the phone is locked |
-| **3. Nutrition** | Barcode scanner, OFF client with caching and rate-limit handling, food log and diary, Simple tabs vs Advanced dashboard | Scanning a real product logs its macros |
+| **1. Onboarding and profile** | Onboarding flow, BMR/TDEE/macro maths with unit tests, SQLite schema, Simple/Advanced toggle, units (kg/lb, cm/in) and theme choice | A new user gets calorie and macro targets |
+| **2. Workout tracker** | Bundle the exercise DB, exercise browser with search and filters, plan templates, Start Workout, set logging, rest countdown + haptics + background notification, lock-screen timer (Live Activity / Android notification), exercise history and PRs, warm-up sets, supersets, plate calculator, custom exercises, plan editor, session summary | A full workout can be logged and the rest timer vibrates even when the phone is locked |
+| **3. Nutrition** | Barcode scanner, search by name, OFF client with caching and rate-limit handling, food log and diary, custom foods, saved meals and recipes, water tracking, Simple tabs vs Advanced dashboard | Scanning a real product logs its macros |
 | **4. 3D body** | Model pipeline (MakeHuman → Blender → glTF), R3F scene, stats-to-morph mapping, goal ghost, muscle highlight + weekly heatmap, 2D fallback | The body reflects onboarding stats and lights up muscles per exercise |
-| **5. Health and reminders** | HealthKit + Health Connect read/write, pedometer fallback, step nudges, weigh-in reminders, notification settings | Steps show from Health and reminders fire on schedule |
+| **5. Health, progress and reminders** | HealthKit + Health Connect read/write, pedometer fallback, step nudges, weigh-in reminders, body measurements, progress photos with before/after view, notification settings | Steps show from Health and reminders fire on schedule |
 | **6. Coach** | Rules engine, advice cards, weekly summary | Advice changes sensibly with seeded test data |
-| **7. Polish** | Animation pass, accessibility, Reduce Motion, empty and error states, performance on low-end Android, app store assets | Ready for TestFlight / Play internal testing |
-| **8. Later** | Supabase accounts and sync, AI coach, social/sharing, wearables, progress photos | — |
+| **7. Engagement and data** | Streaks and achievements, home screen widgets, data export and backup, share cards for workouts and PRs | Widgets update after logging; an export can be restored on a new phone |
+| **8. Polish** | Animation pass, accessibility, Reduce Motion, empty and error states, performance on low-end Android, app store assets | Ready for TestFlight / Play internal testing |
+| **9. Watch apps** | Apple Watch and Wear OS apps for logging sets and running the rest timer | A workout can be logged from the watch |
+| **10. Later** | Supabase accounts and sync, friends and feeds, AI coach | — |
 
 Phases 2 and 3 can run in parallel; phase 4 can start alongside phase 2 because the model pipeline is separate work.
 
@@ -167,4 +188,6 @@ Phases 2 and 3 can run in parallel; phase 4 can start alongside phase 2 because 
 - **Background limits on iOS** restrict how "live" step nudges can be (see 4.6).
 
 ## 8. Next step
-Choose where the code lives (a new GitHub repo or an existing one), then start Phase 0.
+The code lives in `gymApp/` in the React-auth0 repo. Phase 0 is in review; Phase 1 starts once it's merged.
+
+Not planned: food logging from photos with AI (left out at Kyle's request).
